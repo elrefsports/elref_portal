@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #111827; /* Near Black */
+  --color-secondary: #6b7280; /* Gray-500 */
+  --color-accent: #111827; /* Monochrome accent */
+  --color-border: #f0f0f0;
+  
+  --font-sans: "Inter", "Helvetica Neue", "Arial", sans-serif;
+  --font-display: "Inter", "Helvetica Neue", "Arial", sans-serif;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&display=swap');
+
+@layer base {
+  body {
+    @apply font-sans text-slate-900 antialiased bg-white;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-light tracking-tight text-slate-900;
+  }
+}
+
+.glass-morphism {
+  @apply bg-white/90 backdrop-blur-sm border-b border-border shadow-none;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center px-6 py-2 rounded-sm bg-slate-900 text-white font-medium text-sm transition-all hover:bg-slate-800 shadow-none;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center px-6 py-2 rounded-sm bg-slate-100 text-slate-900 font-medium text-sm transition-all hover:bg-slate-200 shadow-none;
+}
+
+.section-container {
+  @apply max-w-6xl mx-auto px-6 sm:px-10 py-16 md:py-20;
+}
+
+.card {
+  @apply bg-white rounded-none p-6 md:p-10 border border-border shadow-none transition-all;
+}
+
+.badge {
+  @apply inline-block px-3 py-1 bg-slate-100 text-slate-600 rounded-sm font-semibold text-[10px] uppercase tracking-wider;
+}
+
+.date-label {
+  @apply text-[11px] text-slate-400 uppercase tracking-widest font-bold;
+}
+
+.stat-label {
+  @apply text-[10px] text-slate-400 uppercase tracking-widest font-bold;
+}
+
+.stat-value {
+  @apply text-2xl font-light text-slate-900;
+}
+
+.hero-title {
+  @apply text-4xl sm:text-5xl md:text-6xl font-extralight tracking-tighter leading-[1.1] mb-8 text-slate-900;
+}
+
+.input-minimal {
+  @apply w-full text-sm border-b border-border py-3 focus:border-slate-900 outline-none transition-all bg-transparent;
+}
+
+.btn-thumb {
+  @apply min-h-[48px] flex items-center justify-center;
+}
+

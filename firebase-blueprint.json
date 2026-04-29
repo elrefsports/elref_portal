@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "Registration": {
+      "title": "Registration",
+      "description": "Student registration for foundation programs.",
+      "type": "object",
+      "properties": {
+        "program": { "type": "string", "description": "Selected program type (Spark, Summer Club, Both)" },
+        "studentName": { "type": "string", "description": "Full name of the student" },
+        "dob": { "type": "string", "description": "Date of birth" },
+        "schoolClass": { "type": "string", "description": "School and class level" },
+        "parentName": { "type": "string", "description": "Name of parent/guardian" },
+        "whatsapp": { "type": "string", "description": "WhatsApp contact number" },
+        "status": { "type": "string", "enum": ["pending", "contacted", "enrolled", "completed"], "description": "Operational status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["program", "studentName", "dob", "schoolClass", "parentName", "whatsapp", "status", "createdAt"]
+    },
+    "ContactMessage": {
+      "title": "Contact Message",
+      "description": "Messages sent from the contact form.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "contactInfo": { "type": "string", "description": "Email or Mobile" },
+        "intent": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "contactInfo", "intent", "message", "createdAt"]
+    },
+    "AdminLog": {
+      "title": "Admin Log",
+      "description": "Record of a login attempt to the admin portal.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "success": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userAgent": { "type": "string" }
+      },
+      "required": ["email", "success", "timestamp"]
+    }
+  },
+  "firestore": {
+    "registrations": {
+      "schema": "Registration",
+      "description": "Collection of student registrations."
+    },
+    "messages": {
+      "schema": "ContactMessage",
+      "description": "Collection of contact inquiries."
+    },
+    "adminLogs": {
+      "schema": "AdminLog",
+      "description": "Collection of admin portal access logs."
+    }
+  }
+}

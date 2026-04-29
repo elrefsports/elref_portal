@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny - Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 0.1 Safety Primitives
+    function isSignedIn() { return request.auth != null; }
+    
+    // Identity verification: Token-based email check + verification status
+    function isAdmin() { 
+      return isSignedIn() && 
+             request.auth.token.email == 'elrefops@gmail.com' && 
+             request.auth.token.email_verified == true;
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Pillar 2: Validation Blueprints
+    // Strict schema validation for Registration
+    function isValidRegistration(data) {
+      let coreFields = ['program', 'studentName', 'dob', 'schoolClass', 'parentName', 'parentEmail', 'whatsapp', 'status', 'createdAt', 'uid'];
+      let optionalFields = ['paymentTimestamp', 'transactionId'];
+      return data.keys().hasAll(coreFields) && 
+             data.keys().hasOnly(coreFields.concat(optionalFields)) &&
+             data.program is string && data.program.size() >= 2 && data.program.size() <= 50 &&
+             data.studentName is string && data.studentName.size() >= 2 && data.studentName.size() <= 200 &&
+             data.dob is string && data.dob.size() >= 8 && data.dob.size() <= 20 &&
+             data.schoolClass is string && data.schoolClass.size() >= 2 && data.schoolClass.size() <= 100 &&
+             data.parentName is string && data.parentName.size() >= 2 && data.parentName.size() <= 200 &&
+             data.parentEmail is string && data.parentEmail.size() > 5 &&
+             data.whatsapp is string && data.whatsapp.size() >= 10 && data.whatsapp.size() <= 20 &&
+             data.status in ['awaiting-payment', 'pending', 'contacted', 'enrolled', 'completed'] &&
+             data.createdAt == request.time &&
+             data.uid == request.auth.uid &&
+             (!data.keys().hasAll(['paymentTimestamp']) || data.paymentTimestamp is timestamp) &&
+             (!data.keys().hasAll(['transactionId']) || (data.transactionId is string && data.transactionId.size() <= 100));
+    }
+
+    // Strict schema validation for Contact Messages
+    function isValidMessage(data) {
+      let requiredFields = ['name', 'contactInfo', 'intent', 'message', 'createdAt'];
+      return data.keys().hasAll(requiredFields) && 
+             data.keys().size() == requiredFields.size() &&
+             data.name is string && data.name.size() <= 100 &&
+             data.contactInfo is string && data.contactInfo.size() <= 100 &&
+             data.intent is string && data.intent.size() <= 50 &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.createdAt == request.time;
+    }
+
+    // Validation for Admin Logs
+    function isValidAdminLog(data) {
+      let requiredFields = ['email', 'success', 'timestamp', 'userAgent'];
+      return data.keys().hasAll(requiredFields) && 
+             data.keys().size() == requiredFields.size() &&
+             data.email is string && data.email.size() <= 100 &&
+             data.success is bool &&
+             data.timestamp == request.time &&
+             data.userAgent is string && data.userAgent.size() <= 500;
+    }
+
+    // Strict schema validation for Gallery
+    function isValidGalleryItem(data) {
+      let requiredFields = ['title', 'category', 'url', 'createdAt'];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().size() == requiredFields.size() &&
+             data.title is string && data.title.size() <= 100 &&
+             data.category in ['Cricket', 'Athletics', 'Digital Literacy', 'Community'] &&
+             data.url is string && data.url.size() <= 1000 &&
+             data.createdAt == request.time;
+    }
+
+    // 1. Registrations Collection
+    match /registrations/{regId} {
+      // Create: Signed in users with verified email can register
+      allow create: if isSignedIn() && 
+                      request.auth.token.email_verified == true &&
+                      isValidRegistration(incoming()) && 
+                      isValidId(regId);
+      
+      // List/Get: Restricted to verified admin
+      allow get: if isAdmin() && isValidId(regId);
+      allow list: if isAdmin();
+      
+      // Update: Restricted to admin OR the owner during payment confirmation
+      allow update: if isValidId(regId) && (
+        // Action: Payment Confirmation (by owner)
+        (isSignedIn() && request.auth.uid == existing().uid && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentTimestamp', 'transactionId']) &&
+         incoming().status == 'pending' &&
+         incoming().paymentTimestamp == request.time) ||
+        // Action: Admin Status Update
+        (isAdmin() && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+         incoming().studentName == existing().studentName &&
+         incoming().parentName == existing().parentName &&
+         incoming().createdAt == existing().createdAt)
+      );
+      
+      // Delete: Restricted to verified admin
+      allow delete: if isAdmin() && isValidId(regId);
+    }
+
+    // 2. Contact Messages Collection
+    match /messages/{msgId} {
+      allow create: if isValidMessage(incoming()) && isValidId(msgId);
+      allow get: if isAdmin() && isValidId(msgId);
+      allow list: if isAdmin();
+      allow delete: if isAdmin() && isValidId(msgId);
+      // Update: Allow admin to triage message intent
+      allow update: if isAdmin() && isValidId(msgId) && 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['intent']) &&
+                       incoming().intent is string && incoming().intent.size() <= 50;
+    }
+
+    // 3. Admin Logs Collection
+    match /adminLogs/{logId} {
+      // Anyone signed in (via Google) can log an attempt (this is a public-ish write for logging)
+      allow create: if isSignedIn() && isValidAdminLog(incoming()) && isValidId(logId);
+      allow get: if isAdmin() && isValidId(logId);
+      allow list: if isAdmin();
+      allow delete: if false; // Logs cannot be deleted
+      allow update: if false; // Logs are immutable
+    }
+
+    // 4. Gallery Collection
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidGalleryItem(incoming()) && isValidId(itemId);
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(itemId);
+    }
+  }
+}
